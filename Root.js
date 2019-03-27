@@ -7,76 +7,92 @@ import { LocalAuthentication } from 'expo'
 
 import MainScreen from './screens/MainScreen'
 
-const persistorStore = configureStore();
+const {store, persistor} = configureStore();
 
 class Root extends Component {
   constructor(props) {
     super(props)
 
     this.state = {
-      hasHardwareAuth: undefined,
-      hasFingerPrint: undefined,
-      hasFaceUnlock: undefined
+      hasHardwareAuthChecked: false,
+      hasHardwareAuth: false,
+      hasFingerPrint: false,
+      hasFaceUnlock: false,
+      hasExistingAuthData: false
     }
   }
 
-  _checkHardwareAuth() {
-    LocalAuthentication.hasHardwareAsync()
-        .then(res => {
-          console.log('hasHardwareAuth', res)
+  async _checkHardwareAuth() {
 
-          this.setState({hasHardwareAuth: res})
+    try {
+      const hasHardwareAuth = await LocalAuthentication.hasHardwareAsync();
+      console.log('hasHardwareAuth', hasHardwareAuth)
+      this.setState({hasHardwareAuth: hasHardwareAuth})
 
-          if (res) {
-            LocalAuthentication.supportedAuthenticationTypesAsync()
-                .then(res => {
-                  console.log('supportedAuthenticationTypes', res)
+      if (hasHardwareAuth) {
+        const supportedAuthTypes = await LocalAuthentication.supportedAuthenticationTypesAsync()
+        console.log('supportedAuthenticationTypes', supportedAuthTypes)
+        const hasFingerPrint = supportedAuthTypes.includes(1);
+        const hasFaceUnlock = supportedAuthTypes.includes(2);
 
-                  const hasFingerPrint = res.includes(1);
-                  const hasFaceUnlock = res.includes(2);
-
-                  this.setState({
-                    hasFingerPrint,
-                    hasFaceUnlock
-                  })
-                })
-                .catch(error => {console.error(error)})
-          }
-
+        this.setState({
+          hasFingerPrint,
+          hasFaceUnlock
         })
-        .catch(error => {console.error(error)})
+      }
+
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  async _checkForExistingAuthData() {
+    try {
+      const hasExistingAuthData = await LocalAuthentication.isEnrolledAsync()
+      console.log('hasExistingAuthData', hasExistingAuthData)
+      this.setState({hasExistingAuthData: hasExistingAuthData})
+
+    } catch(error) {
+      console.log(error)
+    }
   }
 
   componentDidMount() {
-    this._checkHardwareAuth()
+    this._checkHardwareAuth().then(() => {
+      console.log('Hardware got checked');
+      this.setState({hasHardwareAuthChecked: true});
+
+      console.log('hasHardwareAuth', this.state.hasHardwareAuth);
+      if (this.state.hasHardwareAuth) {
+        this._checkForExistingAuthData();
+      }
+    })
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (!prevState.hasHardwareAuth && this.state.hasHardwareAuth) {
-      console.log('Device supports hardware auth')
-
-    }
+    console.log(prevState, this.state);
   }
 
   render() {
-    console.log('ZERTY', persistorStore);
+    console.log('Render: Persisted Store', store, this.state.hasHardwareAuth);
     return (
       <View>
-
-        <Provider store={persistorStore.store}>
-
-          <PersistGate loading={null} persistor={persistorStore.persistor}>
+        <Provider store={store}>
+          <PersistGate loading={null} persistor={persistor}>
 
             <Text>Expo Tester</Text>
 
-
+            <Text>AUTHENTICATION:</Text>
+            <Text>hasHardwareAuth: {this.state.hasHardwareAuth.toString()}</Text>
+            <Text>hasHardwareAuthChecked: {this.state.hasHardwareAuthChecked.toString()}</Text>
+            <Text>hasFingerPrint: {this.state.hasFingerPrint.toString()}</Text>
+            <Text>hasFaceUnlock: {this.state.hasFaceUnlock.toString()}</Text>
+            <Text>hasExistingAuthData: {this.state.hasExistingAuthData.toString()}</Text>
 
             <MainScreen/>
 
           </PersistGate>
-
         </Provider>
-
       </View>
     )
   }

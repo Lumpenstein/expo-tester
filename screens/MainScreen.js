@@ -1,11 +1,10 @@
 import React, {Component} from 'react'
 import { StyleSheet, Text, View } from 'react-native';
 import {connect} from 'react-redux'
-import { LocalAuthentication } from 'expo'
 
 class MainScreen extends Component {
   render() {
-    console.log('rendering mainscreen');
+    console.log('Render MainScreen');
 
     return (
         <View>
