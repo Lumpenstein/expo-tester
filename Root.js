@@ -14,7 +14,6 @@ class Root extends Component {
     super(props)
 
     this.state = {
-      hasHardwareAuthChecked: false,
       hasHardwareAuth: false,
       hasFingerPrint: false,
       hasFaceUnlock: false,
@@ -23,49 +22,29 @@ class Root extends Component {
   }
 
   async _checkHardwareAuth() {
-
     try {
-      const hasHardwareAuth = await LocalAuthentication.hasHardwareAsync();
-      console.log('hasHardwareAuth', hasHardwareAuth)
-      this.setState({hasHardwareAuth: hasHardwareAuth})
+      const res = await Promise.all([
+        LocalAuthentication.hasHardwareAsync(),
+        LocalAuthentication.isEnrolledAsync(),
+        LocalAuthentication.supportedAuthenticationTypesAsync()
+      ])
 
-      if (hasHardwareAuth) {
-        const supportedAuthTypes = await LocalAuthentication.supportedAuthenticationTypesAsync()
-        console.log('supportedAuthenticationTypes', supportedAuthTypes)
-        const hasFingerPrint = supportedAuthTypes.includes(1);
-        const hasFaceUnlock = supportedAuthTypes.includes(2);
+      console.log('_checkHardwareAuth', res);
 
-        this.setState({
-          hasFingerPrint,
-          hasFaceUnlock
-        })
-      }
-
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  async _checkForExistingAuthData() {
-    try {
-      const hasExistingAuthData = await LocalAuthentication.isEnrolledAsync()
-      console.log('hasExistingAuthData', hasExistingAuthData)
-      this.setState({hasExistingAuthData: hasExistingAuthData})
-
-    } catch(error) {
-      console.log(error)
+      this.setState({
+        hasHardwareAuth: res[0],
+        hasExistingAuthData: res[1],
+        hasFingerPrint: Array.isArray(res[2]) ? res[2].includes(1) : false,
+        hasFaceUnlock: Array.isArray(res[2]) ? res[2].includes(2) : false
+      })
+    } catch (e) {
+      console.error(e);
     }
   }
 
   componentDidMount() {
     this._checkHardwareAuth().then(() => {
       console.log('Hardware got checked');
-      this.setState({hasHardwareAuthChecked: true});
-
-      console.log('hasHardwareAuth', this.state.hasHardwareAuth);
-      if (this.state.hasHardwareAuth) {
-        this._checkForExistingAuthData();
-      }
     })
   }
 
@@ -84,7 +63,6 @@ class Root extends Component {
 
             <Text>AUTHENTICATION:</Text>
             <Text>hasHardwareAuth: {this.state.hasHardwareAuth.toString()}</Text>
-            <Text>hasHardwareAuthChecked: {this.state.hasHardwareAuthChecked.toString()}</Text>
             <Text>hasFingerPrint: {this.state.hasFingerPrint.toString()}</Text>
             <Text>hasFaceUnlock: {this.state.hasFaceUnlock.toString()}</Text>
             <Text>hasExistingAuthData: {this.state.hasExistingAuthData.toString()}</Text>
